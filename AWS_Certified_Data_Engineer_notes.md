@@ -346,4 +346,177 @@ Classes are:
         - ***Archive Instant Access Tier*** (*automatic*): objects not accessed for 90 days
         - ***Archive Access tier*** (*optional*): confgurable from 90 to +700 days
         - ***Deep archive Access tier*** (*optional*): configurable from 180 days to +700 days
-![img/01_S3_Storage_Classes_Comparison.png]
+![Storage Classes AWS](img/01_S3_Storage_Classes_Comparison.png)
+
+### S3 Express One Zone
+This is a special sotrage class:
+- High performance for a single Availability Zone
+- Objects are NOT stored in a normal bucket
+- Objects ar **stored in a Directory Bucket** (bucket in a single AZ)
+- Handle 100.000 requests per second with single-digit milisecond latency
+- Up to x10 better performance then S3 Standard (50% lower costs)
+- High durability (99'999999999%) and availability (99'95%)
+- Co.locate your storage and compute resources in the same AZ (reduces latency)
+- ***You allocate your compute and storage resouces in the same availability zone and reduce our network and storage costs***. Data is stored in a single AZ
+- Use cases: latency-sensitive apps, data-intensive apps, AI & ML training, financial modeling, media processing, HPC...
+- Best integrated with SageMaker Model Training, Athena, EMR, Glue...
+
+### S3 Lifecycles Rules
+These are rules you can set on your buckets to manage the Strage class used for the objects in them.
+
+There are different type of lifecycle rules:
+- ***Transition actions***: configure objetcs to transition to another storage class
+- ***Expiration Actions***: configure objects expiration (deletion) after some time. Examples:
+    - Access log files can be set to delete after 365 days
+    - Delete old versions of files ( if versioning is enabled)
+    - Delete multi part uploads
+
+Rules cn be crated for a certain prefix ("folder")
+
+Also, rulse can be created for certain object Tags
+
+#### Storage Class Transition Optimization: S3 Analyics
+S3 Analytics is a built-in tool that helps you decide when to transition objects to the right storage class.
+
+The recommendations only work for Standard and Standard IA.
+
+Reports are generated and updated daily (takes from 24 to 48 hours to start providing data)
+
+### S3 Event Notifications
+Events happening in S3 can be notified through different available AWS tools (SNS, SQS, Lambda, EventBridge).
+
+You can set up automatic reactions trhough the S3 notifications
+
+First, you need to create a IAM Permission for the service that will be trigered upon the event:
+- SNS Resource (Access) Policy
+- SQS Resource (Access) Policy
+- Lambda Resource Policy
+
+Note that these are NOT IAM roles, but IAM policies.
+
+### S3 Baseline Performance
+Amazon S3 automatically scales to high requests rates , latency 100-200ms
+
+Your application can cachieve at least 3.500 PUT/COPY/POST/DELETE or 5.500 GET/HEAD requests per second per prefix in a bucket.
+
+And there are NO limits of prefixes in a bucket.
+
+This means that ***if you spread reads across different prefixes evenly, you can achieve a higher amount of available request per second***
+
+#### Optimize S3 Performance: Uploads
+There are several methods to attain this optimization:
+- ***Multipart Upload***: instead of uploading a single files, you can partition them (recommended for files >100MB and compulsory for files >5GB). It can help parallelize uploads
+- ***S3 Transfer Acceleration***: increases the transfer speed by trasferring files to AWS edge locations which will forard the data to the S3 bucket in the target region (uses a "bridge" location to move the file to the target location).
+
+#### Optimize S3 Performance: Reads
+There is a feature called **S3 Byte-Range Fetches**.
+
+This feature:
+- parallelize GETs be requesting specific byte ranges
+- Has better resilience in case of failures
+- Can be used to speed up downloads
+- Can be used to retrieve only a partial part of the file
+
+### S3 - Object Encryption
+S3 allows users to encryp objects using 4 different methods:
+- **Server-Side Encryption (SSD)**:
+    - ***Server-Side Ecryption with Amazon S3-Managed Keys (SSE-S3)***
+    - ***Served-Side Encryption with KMS Keys stored in AWS KMS (SSE-KMS)***
+    - ***Server-Side Encryption with Customer-Provided Keys (SSE-C)***
+- **Client-Side Encryption**: encrypted on client side before uploading to S3
+
+Changing the encryption type of an object will create a new version if versioning is enabled.
+
+#### Server-Side Ecryption with Amazon S3-Managed Keys (SSE-S3)
+Encryption is done using keys handled, managed and owned by AWS
+- Object is encrypted server-side
+- Encryption type is AES-256
+- Must set header "x-amz-server-side-encription":"AES256"
+- ***Enabled by default for new buckets & new objects***
+
+#### Served-Side Encryption with KMS Keys stored in AWS KMS (SSE-KMS)
+The user managed its keys using the AWS KMS (Key Managed Service).
+
+- KMS provides user control and audit capabilities of the keys by using CloudTrail
+- Object is still encrypted server-side
+- HEader must be set "x-amz-server-side-encryption":"aw:kms"
+
+KMS has some limitations regarding quotas
+
+
+#### Served-Side Encryption with Customer-Provided Keys (SSE-C)
+This is a Server-Side Encryption using keys fully managed by the customer outside AWS
+- AWS S3 does NOT store the encryption key you provide
+- HTTPS must be used
+- Encryption key must be provided in HTTP headers for every HTTP request made
+
+#### Client-Side Encryption
+Uses cleint libraries such as Amazon S3 Client-Side Encryption Library
+- Clients must encrypt data themselves before sending it to amazon S3
+- Clients must decrypt data themselves when retrieving from Amazon S3
+- Customer fully manages the keys and encryption cycle
+
+#### Encryption in transit (SSL/TLS)
+Encryption in flight is also called SSL/TLS
+
+Amazon S3 exposes two endpoints:
+- HTTP Endpoint - non encrypted
+- HHTPS Endpoint - encryption in flight (mandatory for SSE-C)
+
+To force encryption in transit you can use a bucket policy:
+```json
+"Condition":{
+    "Bool":{
+        "aws:SecureTransport":"false" 
+    }
+}
+```
+
+Using this condition will reject files with SecureTransport=false (HTTP) and only accepting files SecureTransport=true (HTTPS)
+
+### S3 Access Points
+**Access Points** act as endpoints through policies that allow to set certain access ermissions to users or groups of users.
+
+Access Points simplify security management for S3 buckets. Each access point has:
+- its own DNS name (Internet origin or VPC origin)
+- an access point policy (similar to bucket policy) - manage security at scale
+
+They can be defined to be privately accessible onl from the VPC origin. In order to do that you must create a VPC endpoint to access the Access Point. The VPC Endpoint must have a policy that allows access to the target bucket and Access Point
+
+### S3 Object Lambda
+The idea behind is to have an object modifid before it's retrieved by the caller application. Happens in-place without creating an extra version.
+
+Works by using a S3 bucket on top of which we create a S3 Access point and a S3 Object Lambda Access Point (using the Lambda function).
+
+![S3 Object Lambda](img/02_S3_Obejct_Lambda.png)
+
+### S3 Storage Lens
+This is a service used to understand, analyze and optimize storage accoss the entire AWS Organization:
+- Discover anomaies, identiy cost effficiencies, and apply data protection best practices accross entire AWS Organizations (30 days usage and activity metrics)
+- Aggregate data for Organization, specific accounts, regions, buckets, or prefixes
+- Default dashboard or create your own dashboards
+- Can be configures to export metrics daily to an S3 bucket (CSV, Parquet)
+
+## Amazon EC2 Storage Instances
+There are different types of EC2 storage instanes available in AWS. EC2 are vritual machines, and they require some underlying storage. These types are:
+- EBS Volumes
+- EFS Volumes
+
+### Amazon EBS
+An **EBS Volume** is a ***elastic block store***, a network drive you can attach to your instances while they run. Its is a network-attached storage that behaves like a local disk. (with very low latency).
+- It allows to persist instance to your instances, even after termination
+- They can only be mounted to one EC2 instance at a time (at CCP (Certified Cloud Practitioner) level)
+- They ar bound to a specific availability zone
+
+You can think of them as network USB sticks to attach networks.
+
+***EBS Volumes are network drives***:
+- Use network to communicate the instance (EC2), which means there might be a bit of latency
+- It can be detached from an EC2 instance and attached to another one
+- It's locked to n Availavility Zone: an EBS Volume in a zone cannot be attached to a EC2 instance in another zone
+- To move a volume to another region, you first need to snapshot it
+- You need to provision it in advance with you desire resources (size in GBS and IOPS)
+
+![Example EBS Arcitecture](img/03_EBS_Architecture.png)
+
+Finally, when creating EBS volumes for a EC2 instance, there's an option called ***delete on termination***, that, by default, once the EC2 instance is terminted, the EBS will be deleted. If you wnat to preserve data, you need to unable this option.
