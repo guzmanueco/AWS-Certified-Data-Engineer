@@ -284,3 +284,66 @@ Also, for delete operations:
 - Deletions with a version ID are not replciated
 
 Finally, chain of replication is not allowed: if bucket 1 replicates to bucket 2 and bucket 2 replicates to bucket 3, objects from bucket 1 will NOT replicate to bucket 3.
+
+### S3 Storage Classes
+S3 comes with different storage classes. When you create an object in S3 you can choose the storage class to use for it as well as set S3 lifecycle configurations. 
+
+#### S3 Durability and Availability
+S3 comes wih a high **durability** for all storage classes, of 99.999999999%, 11'9 s (losing an object every 10.000 years)
+
+As for the **availability**, it differs for eac class
+
+#### S3 Classes
+Classes are:
+- **Amazon S3 Standard - General Purpose**:
+    - Comes with 99.99% availability
+    - Used for frequently accessed data
+    - Low latency and high throughput
+    - Sustain 2 concurrent facility failures
+    - Use cases: big data analytics, mobile and gamiing apps, ocntent distribution...
+
+- **Amazon S3 Standard - Infrequent Access**:
+    - This is for data less frequently access then General Purpose, but requires rapid access when needed
+    - Has a lower cost, but comes with a retrieval cost
+    - Has 99'9% availability
+    - Use cases: disaster recovery, backups
+
+- **Amazon S3 One Zone - Infrequent Access**:
+    - Same as Standard Infrequent Access, except only stored in a single zone
+    - If the AWS Zone facility loses the data, the data is lost forever (no interzone replication)
+    - 99'5% availability
+    - Use cases: sotre secondary backup copies of on-premise data or data you can recreate
+
+- **Amazon S3 Glacier Instant Retrieval**:
+    - Low cost object storage meant for archiving and backup
+    - Pricing consist on a base low cost plus retirevl cost per query
+    - Comes with a ms retrieval tme
+    - Minimum sotrage duration is 90 days
+
+- **Amazon S3 Glacier Flexible Retrieval**:
+    - Low cost object storage meant for archiving and backup
+    - Pricing consist on a base low cost plus retireval cost per query
+    - Retrieval has classes:
+        - Expedited (1 to 5 minutes retrieval time)
+        - Standard (3 to 5 hours retrieavl time)
+        - Bulk (5 to 12 hours retrieval time) - Free retireval
+    Minimum storage duration is 90 days
+- **Amazon S3 Glacier Deep Archive**:
+    - Low cost object storage meant for archiving and backup
+    - Pricing consist on a base low cost plus retireval cost per query
+    - Classes are:
+        - Standard (12 hours)
+        - Bulk (48 hours)
+        - Minimum Storage duration is 180 days
+
+- **Amazon S3 Intelligent Tiering**: allows to move objects between classes.
+    - Uses an auto-tiering fee
+    - Moves objects automatically between AccessTiers based on usage
+    - There are no retrieval charges in S3 Intelligent Tiering
+    - Tiers are:
+        - ***Frequent Access Tier*** (*automatic*): default tier
+        - ***Infrequent Access Tier*** (*automatic*): objects not accessed for 30 days
+        - ***Archive Instant Access Tier*** (*automatic*): objects not accessed for 90 days
+        - ***Archive Access tier*** (*optional*): confgurable from 90 to +700 days
+        - ***Deep archive Access tier*** (*optional*): configurable from 180 days to +700 days
+![img/01_S3_Storage_Classes_Comparison.png]
