@@ -520,3 +520,139 @@ You can think of them as network USB sticks to attach networks.
 ![Example EBS Arcitecture](img/03_EBS_Architecture.png)
 
 Finally, when creating EBS volumes for a EC2 instance, there's an option called ***delete on termination***, that, by default, once the EC2 instance is terminted, the EBS will be deleted. If you wnat to preserve data, you need to unable this option.
+
+#### EBS Elastic Volumes
+These are volumes that can grow or decraase size as needed based on needs of your storage.
+
+For doing this you don't need t restart the instance or detach the volume.
+
+You can also change the volume type
+
+### Amazon EFS
+**Amazon EFS** (Elastic File System) is another Sotrage option available for your EC2 Virtual Machines. It is a ***managed NFS (Network File System) that can be ounted on many EC2***. It works in multi-availability zones mode too.
+
+It is:
+- Highly available
+- Scalable
+- Very expensive
+- Uses NFSv4.I protocol
+- Uses security group to control access to EFS
+- *Only compatible with Linux based AMI*
+- Uses encryption at rest with KMS
+- Uses POSIX file system (Linux) and has a standard file API
+- The file system scales automaticaaly, pay-per-use, no need to do capacity-planning
+
+Some use cases are:
+- Content Management
+- Web Serving
+- Data sharing
+- Wordpress hosting
+
+#### EFS Performance Modes
+This is set at cretion time. There are two performance modes:
+- *General Purpose*, which is the default mode, and is for latency-sensitive use cases (web server, CMS...)
+- *Max I/O*, which comes with higher latency and parallelization (for big data, media processing...)
+
+#### Throuhput Modes
+Modes are:
+- *Bursting*: 1TB of storage with 50MiB/s and burst of up to 100MiB/s
+- *Provisioned*: througput is set regardless of storage size
+- *Elastic*: automatically scales througput up or down based on your workloads (up to 3Gib/s for reads and 1Gib/s for writes)
+
+#### Storage Classes
+There are different options:
+
+- **Storage Tiers**: to moe files from tier based on predefined rules using lifecycles policies:
+    - Standard: for frequently accessed files
+    - Infrequent: cost to retrieve files but lower storage costs
+    - Archive: rarely accessed data
+
+### EBS vs EFS
+**EBS volumes**:
+- Attached only to one EC2 instance
+- Are locked ate the availability zone of the instacne
+- To migrate across AZ:
+    - Take a snapshot
+    - Restore the sanpshot in the new AZ
+    - EBS backups use IO and you should not run them while your application is handling a lot of traffic
+- Root EBS Volumes get terminated by default when terminating your EC2 instance (can be modified)
+
+**EFS**:
+- Can be mounted to hundreds of instaances in different AZ
+- EFS share website files 
+- It's only for Linux Instances (POSIX)
+- It's costlier than EBS
+- You can leevrage storage for cost saving
+
+## AWS Backup
+**AWS Backup** is a fully managed service that allows to centrally manage and automate backups cross AWS sevices.
+
+There is no need to create custom scripts and manual processes.
+
+Supported services are:
+- EC2 & EBS
+- S3
+- RDS (every DB engine) / Aurora, DynamoDB
+- DocumentDV / Neptune
+- EFS / FSx
+- Storage Gateway
+- More
+
+This tool ***supports cross-AZ backups*** and ***supports cross-account backups***
+
+It's main technical characteristics are:
+- Supports PITR for supported services
+- Has on-demand and scheduled backups
+- There are Tag-ased backup policies
+- You can create backup policies known as **Backup PLans**, where you define:
+    - Backup frequency
+    - Backup window
+    - Transitio to Cold Storage
+    - Retention Period
+
+![AWS Backup](img/04_AWS_Backup.png)
+
+### AWS Backup Vault Lock
+This allos to defined additional layers of defense to your backups
+
+# Databases
+AWS has a broad variety of database solutions. Let's get into them.
+
+## DynamoDB
+***DynamoDB is NoSQL database solution in AWS***.
+- NoSQL databases do not support query joins
+- NoSQL databses present all te data in a single row
+- NoSQL databases don't allow aggreations
+- NoSQL databases scale horizontally
+
+Amazon DynamoDB:
+- Is a fully managed, higly available NoSQL solution in AWS with replication across multiple AZs
+- Scales to massive workloads distributed database
+- Supports millions of requests per seconds, trillions of row, hundres of TB of storage
+- Has a fast and consistent performance
+- Is integrated with IAM for security, authorization and administration
+- Enables event driven programming with DynamoDB streams
+- Has low cost and auto-scaling capabilities
+- Has both Standard and Infrequent Access Table Classes
+
+### DynamoDB Basics
+DynamoDB is made of **tables**:
+- each table has a PK
+- each table can have an infinite number of items (rows)
+- each item (row) has attributes (data key-value pairs)
+- maximum size of an item is 400KB
+- data types supported are:
+    - Scalar Types: string, Number, Binary, Boolean, Null
+    - Document Types: List, Map
+    - Set Types: String Set, Number Set, Binary Set
+
+#### DynamoDB Primary Keys
+On your DynamoDB table, it's crutial to choose the right PK. There are several options:
+- Using a Partition Key (HASH):
+    - The Partition Key will be uniqye
+    - It will be diverse, so that the data is evenly distributed
+- Partition Key + Sort Key (HASH + RANGE):
+    - The combination must be unique for each item
+    - Data is grouped by partition key
+    - Data is sorted by sort key for those items with the same partition key
+
