@@ -656,3 +656,160 @@ On your DynamoDB table, it's crutial to choose the right PK. There are several o
     - Data is grouped by partition key
     - Data is sorted by sort key for those items with the same partition key
 
+#### DynamoDB in Big Data
+DynamoDB is a great tool for hota data that needs to be ingested and consume at big scale.
+
+![DynamoDB Use Cases](img/05_DynamoDB_use_cases.png)
+
+#### DynamoDB Throughput
+There are two modes available:
+- **Proision Mode**: where you choose the size of your write and read capacities defining a plan beforehand. You pay as in your plan. There's also an autoscaling option; and throughput can be execceded temporarily using *Burst Capacity*
+    - ***Write Capacity Units***: 1 WCP represens one write per second for an item up to 1KB in size. *Note, file size is rounded up!*
+    ![Write capacities](img/06_DynamoDB_Write_capacities.png)
+
+    - Read Modes: there are two read modes:
+        - Strongly Consistent read: when we get the most updated data regardless of replication status between servers
+
+        - Eventually Consitent Read: when replication between servers is not completely up-to-date
+      
+      That said, ***Read Capacity Units*** represent on Strong Consistent Read per second or two Eventualyy Consistent Teads per second for an item up to 4BK in size
+      ![Read capacities](img/07_DynamoDB_Read_capacities.png)
+
+- **On-Demand Mode**: read/write automatically sclae up/down with your workloads. No capacity plan is needed, you pay per use (much more expensive). Comes with Write Request Uints (RRU) and Write Request Units (WRU). It is x2.5 expensive thn provision mode
+
+You can switch betwenn these two modes every 24 hours.
+
+#### DynamoDB Partitions Internal
+Data is stored in tables with partitions.
+
+***Partitions Keys go through a hashing algorithm to know to which partition they go***.
+
+**WCUs and RCUs are spread evenly across partitions.**
+
+#### DynamoDB Throttling
+When you exceed provisioned RCUs or WCUs, we get the `ProvisionedTrhougputExceededException`. Some potential reasons for this are:
+- Hot Keys (not enought spread of keys)
+- Hot Partitions
+- Very Large Items (remember WCUs and RCUs depend on size of items)
+
+Solutions for this exception include:
+- Exponential backoff when exception is encountered
+- Distribute partition keys as much as possible
+- If RCU issue, we can use DynamoDB Accelerator (DAX)
+
+### DynamoDB API
+#### Write data
+For writting data we have the request types:
+- PutItem: creates a new item or fully replaces an existing item
+- UpdateItem: updates an existing item
+- Conditional Writes: accept write/update/delete only if conditions are met, otherwise it returns an error
+
+#### Read Data
+- GetItem:
+    - Read based on PK
+    - PK can be HASH or HASH+RANGE
+    - Eventually Consistent Read is the default setting
+    - Option to use Strong Consistenet reads (more RCU and longer compute time)
+
+The query returns items based on:
+- KeyConditionExpressions on the partition key
+- FilterExpression on non-key attributes
+
+Additionally, you can scan a table to export the entire table.
+
+#### Deleted Data
+- DeleteItem
+- DeleteTable: quicker than eleting each item with DeleteItem
+
+#### Batch Operations
+Allows you to save in latency by reducing the number of API calls
+
+Operations are done in parallel for better efficiency.
+
+Part of a btach can fail, in which case we need to retry again on the failed items.
+
+- BatchWriteItem: up to 25 PutItem and/or DeleteItem in one call. Can't use UpdateItem
+- BatchGetItem: returns items from one or more tables
+
+#### PartiQL
+This is a SQL compatible query language for DynamoDB that can be used instead of the API operators.
+
+### DynamoDB Indexes
+There are two types of indexes on DynamoDB:
+
+- **Local Secondary Index (LSI)**
+
+- **Gloabl Secondary Index (GSI)**
+
+#### Local Secondary Index
+This is an alternative sort key for your table (you have the same parition key as that of base table).
+- The sort key consists of one scalar attibute (String, Number or Binary)
+- You can have up to 5 LSI per table
+- They must be defined at tabl creation
+- Attribute Projections: can contain some or all te attributes of the base table
+
+![Local Secondary Index](img/08_Dynamo_DB_LSI.png)
+
+#### Global Secondary Index
+This gives you an alternative PK (HASH or HASH+RANGE) from the base table
+- Speeds up queries on non-key attributes
+- The Index Key consists of scalar attributes (String, Number, Binary)
+- Attribute Projections: some or all the attrbiutes of the base table
+- Must provision RCUs & WCUs for the index
+- Can be added and modified after table creation
+
+![Global Secondary Index](img/09_DynamoDB_GSI.png)
+
+### DynamoDB PartiQL
+PartiQL allows to use a SQL-syntax for DynamoDB tables
+![PatiQL](img/10_DynamoDB_PartiQL.png)
+
+### DynamoDB Accelerator (DAX)
+DAX is a fully-managed, highly available, seamless in-memory cache for DynamoDB. By creating a cluster, you can:
+- Have runtimes of microseconds latency for cached reads and queries
+- DAX does not require application logic modification (it's compatible with existing DynamoDB APIs)
+- Solves the "Hot Key" problem (too many reads)
+
+You create a DAX cluster. Your appliction wll interact with the cluster, whcih will fetch the data from the DynamoDB tables.
+- Every cached piece of data will only be cahced for five minutes on your cluster (% minutes Time TO Live TTL)
+- Clusters can have up to 10 nodes
+- Clusters are Multi-AZ if the number of nodes is greater than 3 (3 nodes minimum for production as recommendation)
+- Data supports encryption at rest withm KMS, VPC, IAM, CloudTrail...
+
+*DAX caches individual objects or queries and scans.* If you want to have cached aggregation results, it's better to go for **Amazon Elasticache** 
+
+### DynamoDB Streams
+Streams are an ordenered list of item-modifications (create/update/delete) on a table.
+
+This ordered list of item-modification can:
+- Sent to Kinesis Data Streams
+- Read by AWS Lambda
+- Read by Kinesis Client Library applicatins
+
+The data retention of streamss on DynamoDB is only 24 ours, so you neeed to stage them somewhere if you want to keep them.
+
+Use cases for streams include:
+- Reacting to changes in real-time (welcome email users)
+- Analytics
+- Insert into derivative tables
+- Insert into OpenSearch Service
+- Implement cross-region replication
+
+***Streams will not be retroactivetily filled after activation.***
+
+#### Stream Contents
+We have te ability to choose the information that will be written to the stream:
+- KEYS_ONLY: only the key attributes of the modified item
+- NEW_IMAGE: shows the entire item as it appears upon mdification
+- OLD_IMAGE: shows the item before the modification
+- NEW_AND_OLD_IMAGES
+
+#### Streams Architecture
+![alt text](img/11_DynamoDB_Stream.png)
+
+##### Streams & Lambda
+For this integration you need to:
+- Define an Event Source Mapping to read from a DynamoDB Streams
+- Ensure the Lambda function has the appropiate permissions
+- Then, the Lambda function will be invoked synchronously to your Stream
+![alt text](img/12_DynamoDB_Streams_and_Lambda.png)
